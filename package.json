@@ -16,5 +16,7 @@
     "url": "https://github.com/lopugit/wasteBot/issues"
   },
   "homepage": "https://github.com/lopugit/wasteBot#readme",
-  "dependencies": {}
+  "dependencies": {
+    "fb": "^2.0.0"
+  }
 }
