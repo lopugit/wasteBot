@@ -49,15 +49,29 @@ app.post('/webhook', (req, res) => {
 			if(webhook_event.message){
 				let message = webhook_event.message
 
-				bot.api('me/messages', 'post', {
-					recipient: webhook_event.sender,
-					message: {
-						text: "Hi "+message.text+", I'm Dad"
-					}
-				}, (e,r)=>{
-					if(e) console.error(e)
-					let debug = 1
-				})
+				if(message.attachments){
+					bot.api('me/messages', 'post', {
+						recipient: webhook_event.sender,
+						message: {
+							text: "Thanks for recycling properly, we're working on getting you the recycling information required to recycle the items in your picture!"
+						}
+					}, (e,r)=>{
+						if(e) console.error(e)
+						let debug = 1
+					})
+
+				} else {
+					bot.api('me/messages', 'post', {
+						recipient: webhook_event.sender,
+						message: {
+							text: "Hi "+message.text+", I'm Dad"
+						}
+					}, (e,r)=>{
+						if(e) console.error(e)
+						let debug = 1
+					})
+				}
+
 			}
 			console.log(webhook_event)
     });
