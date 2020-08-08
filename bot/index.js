@@ -86,7 +86,6 @@ app.post('/webhook', async (req, res) => {
 								// create path out of local directory + sender facebook ID
 								path = dir+attachment.uuid
 								
-
 								// download image to sender ID'd local folder DB
 								download(url, path)
 								
