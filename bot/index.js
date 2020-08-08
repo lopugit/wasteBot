@@ -1,6 +1,13 @@
 // 05/08/2020
+
 // Initialize
 console.log("Starting Facebook Waste Management chatbot...")  
+
+// so process never dies
+process.on('uncaughtException', function (err) {
+  console.log('Caught exception: ', err);
+});
+
 // ES5
 let FB = require('fb')
 
@@ -19,69 +26,99 @@ bot.setAccessToken(secrets.wasteeToken)
 
 
 
-let express = require('express'),
-    bodyParser = require('body-parser'),
-    app = express();
- 
+let express = require('express')
+let request = require('request-promise')
+let fs = require('fs')
+let FileType = require('file-type')
+let uuid = require('uuid').v4
+let bodyParser = require('body-parser')
+let app = express()
+
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
- 
+
 app.listen(8899, () => console.log('Facebook Waste Management chatbot listening on 8899!'));
- 
+
 app.get('/', (req, res) => res.send('Hello World!'));
 
 // Creates the endpoint for our webhook 
-app.post('/webhook', (req, res) => {  
- 
-  let body = req.body;
+app.post('/webhook', async (req, res) => {  
+	try {
 
-  // Checks this is an event from a page subscription
-  if (body.object === 'page') {
+		let body = req.body;
 
-    // Iterates over each entry - there may be multiple if batched
-    body.entry.forEach(function(entry) {
+		// Checks this is an event from a page subscription
+		if (body.object === 'page') {
 
-      // Gets the message. entry.messaging is an array, but 
-      // will only ever contain one message, so we get index 0
-      let webhook_event = entry.messaging[0];
+			// Iterates over each entry - there may be multiple if batched
+			body.entry.forEach(async function(entry) {
 
-			// new message
-			if(webhook_event.message){
-				let message = webhook_event.message
+				// Gets the message. entry.messaging is an array, but 
+				// will only ever contain one message, so we get index 0
+				let webhook_event = entry.messaging[0];
 
-				if(message.attachments){
-					bot.api('me/messages', 'post', {
-						recipient: webhook_event.sender,
-						message: {
-							text: "Thanks for recycling properly, we're working on getting you the recycling information required to recycle the items in your picture!"
-						}
-					}, (e,r)=>{
-						if(e) console.error(e)
-						let debug = 1
-					})
+				// new message
+				if(webhook_event.message){
+					let message = webhook_event.message
 
-				} else {
-					bot.api('me/messages', 'post', {
-						recipient: webhook_event.sender,
-						message: {
-							text: "Hi "+message.text+", I'm Dad"
-						}
-					}, (e,r)=>{
-						if(e) console.error(e)
-						let debug = 1
-					})
+					if(message.attachments){
+						bot.api('me/messages', 'post', {
+							recipient: webhook_event.sender,
+							message: {
+								text: "Thanks for recycling properly, we're working on getting you the recycling information required to recycle the items in your picture!"
+							}
+						}, (r,e)=>{
+							if(e) console.error(e)
+						})
+						message.attachments.forEach(attachment=>{
+							if(attachment.type == 'image'){
+								let url = attachment.payload.url
+								let dir = __dirname+"/../imageDB/"+webhook_event.sender.id+"/"
+
+								// create directory for sender
+								if (!fs.existsSync(dir)){
+									fs.mkdirSync(dir)
+								}
+
+								// add filename uuid to attachment object
+								attachment.uuid = uuid()
+
+								// create path out of local directory + sender facebook ID
+								path = dir+attachment.uuid
+								
+
+								// download image to sender ID'd local folder DB
+								download(url, path)
+								
+							}
+						})
+
+					} else {
+						bot.api('me/messages', 'post', {
+							recipient: webhook_event.sender,
+							message: {
+								text: "Hi "+message.text+", I'm Dad"
+							}
+						}, (e,r)=>{
+							if(e) console.error(e)
+							let debug = 1
+						})
+					}
+
 				}
+				console.log(webhook_event)
+			});
 
-			}
-			console.log(webhook_event)
-    });
-
-    // Returns a '200 OK' response to all requests
-    res.status(200).send('EVENT_RECEIVED');
-  } else {
-    // Returns a '404 Not Found' if event is not from a page subscription
-    res.sendStatus(404);
-  }
+			// Returns a '200 OK' response to all requests
+			res.status(200).send('EVENT_RECEIVED');
+		} else {
+			// Returns a '404 Not Found' if event is not from a page subscription
+			res.sendStatus(404);
+		}
+	} catch(err){
+		console.error(err)
+		res.sendStatus(404);
+	}
 
 });
 
@@ -112,5 +149,18 @@ app.get('/webhook', (req, res) => {
     }
   }
 });
+
 // done initializing
 console.log("Facebook Waste Management chatbot started!")
+
+async function download(url, path){
+	try {
+		let res = await request({ url, resolveWithFullResponse: true, encoding: null })
+		let fileType = await FileType.fromBuffer(res.body)
+		fs.writeFileSync(path+"."+fileType.ext, res.body)
+	} catch(err){
+		console.error("Something went wrong downloading the file from url")
+		console.error(err)
+	}
+}
+

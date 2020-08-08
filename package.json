@@ -21,6 +21,9 @@
     "config": "^3.3.1",
     "express": "^4.17.1",
     "fb": "^2.0.0",
-    "request": "^2.88.2"
+    "file-type": "^14.7.1",
+    "request": "^2.88.2",
+    "request-promise": "^4.2.6",
+    "uuid": "^8.3.0"
   }
 }
