@@ -4,7 +4,8 @@
   "description": "A facebook chat bot to be used with the waste management ecosystem",
   "main": "bot/index.js",
   "scripts": {
-    "test": "tests/test.js"
+    "test": "tests/test.js",
+    "ngrokosx": "./ngroks/ngrokOsx http 8899"
   },
   "repository": {
     "type": "git",
@@ -17,6 +18,7 @@
   },
   "homepage": "https://github.com/lopugit/wasteBot#readme",
   "dependencies": {
+    "axios": "^0.19.2",
     "body-parser": "^1.19.0",
     "config": "^3.3.1",
     "express": "^4.17.1",

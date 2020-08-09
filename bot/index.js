@@ -28,6 +28,7 @@ bot.setAccessToken(secrets.wasteeToken)
 
 let express = require('express')
 let request = require('request-promise')
+let axios = require('axios')
 let fs = require('fs')
 let FileType = require('file-type')
 let uuid = require('uuid').v4
@@ -39,7 +40,7 @@ app.use(bodyParser.json());
 
 app.listen(8899, () => console.log('Facebook Waste Management chatbot listening on 8899!'));
 
-app.get('/', (req, res) => res.send('Hello World!'));
+app.get('/', (req, res) => res.send('Hello Bot World!'));
 
 // Creates the endpoint for our webhook 
 app.post('/webhook', async (req, res) => {  
@@ -62,16 +63,22 @@ app.post('/webhook', async (req, res) => {
 					let message = webhook_event.message
 
 					if(message.attachments){
+						
 						bot.api('me/messages', 'post', {
+							
 							recipient: webhook_event.sender,
 							message: {
 								text: "Thanks for recycling properly, we're working on getting you the recycling information required to recycle the items in your picture!"
 							}
+							
 						}, (r,e)=>{
+							
 							if(e) console.error(e)
 						})
-						message.attachments.forEach(attachment=>{
+						await asyncForEach(message.attachments, async attachment=>{
+							
 							if(attachment.type == 'image'){
+								
 								let url = attachment.payload.url
 								let dir = __dirname+"/../imageDB/"+webhook_event.sender.id+"/"
 
@@ -87,10 +94,26 @@ app.post('/webhook', async (req, res) => {
 								path = dir+attachment.uuid
 								
 								// download image to sender ID'd local folder DB
-								download(url, path)
-								
+								attachment.imageData = await download(url, path)
+
 							}
 						})
+
+						// Forward request to wasteAPI
+						try {
+
+							let apiURL = "http://127.0.0.1:9898/info"
+
+							let resp = await axios.post(apiURL, {
+								attachments: message.attachments
+							})
+
+							console.log(resp)
+
+						} catch(err){
+							console.error(err)
+						}
+						
 
 					} else {
 						bot.api('me/messages', 'post', {
@@ -98,25 +121,31 @@ app.post('/webhook', async (req, res) => {
 							message: {
 								text: "Hi "+message.text+", I'm Dad"
 							}
-						}, (e,r)=>{
+						}, (r,e)=>{
 							if(e) console.error(e)
-							let debug = 1
 						})
 					}
 
 				}
+
 				console.log(webhook_event)
+				
 			});
 
 			// Returns a '200 OK' response to all requests
 			res.status(200).send('EVENT_RECEIVED');
+			
 		} else {
+			
 			// Returns a '404 Not Found' if event is not from a page subscription
 			res.sendStatus(404);
 		}
+		
 	} catch(err){
+		
 		console.error(err)
 		res.sendStatus(404);
+		
 	}
 
 });
@@ -143,6 +172,7 @@ app.get('/webhook', (req, res) => {
       res.status(200).send(challenge);
     
     } else {
+			
       // Responds with '403 Forbidden' if verify tokens do not match
       res.sendStatus(403);      
     }
@@ -154,12 +184,30 @@ console.log("Facebook Waste Management chatbot started!")
 
 async function download(url, path){
 	try {
+		
 		let res = await request({ url, resolveWithFullResponse: true, encoding: null })
-		let fileType = await FileType.fromBuffer(res.body)
+		let fileType = await FileType.fromBuffer(res.body) || { ext: 'unknown' }
 		fs.writeFileSync(path+"."+fileType.ext, res.body)
+		
+		return {
+			bin: res.body,
+			...fileType
+		}
+		
 	} catch(err){
+		
 		console.error("Something went wrong downloading the file from url")
 		console.error(err)
+		
 	}
 }
 
+async function asyncForEach(array, callback) {
+	
+  for (let index = 0; index < array.length; index++) {
+		
+    await callback(array[index], index, array);
+		
+  }
+	
+}
