@@ -65,7 +65,7 @@ app.post('/webhook', async (req, res) => {
 					if(message.attachments){
 						
 						bot.api('me/messages', 'post', {
-							
+
 							recipient: webhook_event.sender,
 							message: {
 								text: "Thanks for recycling properly, we're working on getting you the recycling information required to recycle the items in your picture!"
@@ -187,7 +187,9 @@ async function download(url, path){
 		
 		let res = await request({ url, resolveWithFullResponse: true, encoding: null })
 		let fileType = await FileType.fromBuffer(res.body) || { ext: 'unknown' }
-		fs.writeFileSync(path+"."+fileType.ext, res.body)
+
+		// for writing image data to file, but we don't really need this
+		// fs.writeFileSync(path+"."+fileType.ext, res.body)
 		
 		return {
 			bin: res.body,
