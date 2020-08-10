@@ -11,18 +11,13 @@ process.on('uncaughtException', function (err) {
 // ES5
 let FB = require('fb')
 
-let secrets = require('secret')
-
-let extention = config = {
-	appId: "2710167052529715",
-	appSecret: secrets.secret
-}
+let extention = config = require('config')
 
 // create bot authenticated instance
 let bot = FB.extend(extention)
 
 // set the access token
-bot.setAccessToken(secrets.wasteeToken)
+bot.setAccessToken(config.wasteeToken)
 
 
 
