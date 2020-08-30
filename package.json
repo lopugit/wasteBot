@@ -6,7 +6,7 @@
   "scripts": {
 		"start": "pm2 start ecosystem.config.js",
     "test": "tests/test.js",
-    "ngrokosx": "./ngroks/ngrokOsx http 8899"
+    "ngrokosx": "./ngroks/ngrokOsx http 8899 -log=stdout > ./ngroks/logs/osx.log &"
   },
   "repository": {
     "type": "git",
