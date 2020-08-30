@@ -17,7 +17,7 @@ let extention = config = require('config')
 let bot = FB.extend(extention)
 
 // set the access token
-bot.setAccessToken(config.wasteeToken)
+bot.setAccessToken(config.wastee.token)
 
 
 
@@ -30,8 +30,8 @@ let uuid = require('uuid').v4
 let bodyParser = require('body-parser')
 let app = express()
 
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ limit: '100mb', extended: false }));
+app.use(bodyParser.json({ limit: '100mb' }));
 
 app.listen(8899, () => console.log('Facebook Waste Management chatbot listening on 8899!'));
 
@@ -53,6 +53,9 @@ app.post('/webhook', async (req, res) => {
 				// will only ever contain one message, so we get index 0
 				let webhook_event = entry.messaging[0];
 
+				console.log("unhandled webhook_event: ", webhook_event)
+
+
 				// new message
 				if(webhook_event.message){
 					let message = webhook_event.message
@@ -69,6 +72,7 @@ app.post('/webhook', async (req, res) => {
 						}, (r,e)=>{
 							
 							if(e) console.error(e)
+
 						})
 						await asyncForEach(message.attachments, async attachment=>{
 							
@@ -103,7 +107,7 @@ app.post('/webhook', async (req, res) => {
 								attachments: message.attachments
 							})
 
-							console.log(resp)
+							console.log("resp.data", resp.data)
 
 						} catch(err){
 							console.error(err)
@@ -122,9 +126,7 @@ app.post('/webhook', async (req, res) => {
 					}
 
 				}
-
-				console.log(webhook_event)
-				
+								
 			});
 
 			// Returns a '200 OK' response to all requests
