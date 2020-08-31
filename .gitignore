@@ -107,3 +107,5 @@ dist
 bot/node_modules/secret.js
 
 imageDB/*
+
+package-lock.json
