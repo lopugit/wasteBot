@@ -7,7 +7,7 @@
 		{
 			"type": "node",
 			"request": "launch",
-			"name": "Debug wasteBOT",
+			"name": "Debug wasteBot",
 			"skipFiles": [
 				"<node_internals>/**"
 			],

@@ -62,18 +62,6 @@ app.post('/webhook', async (req, res) => {
 
 					if(message.attachments){
 						
-						bot.api('me/messages', 'post', {
-
-							recipient: webhook_event.sender,
-							message: {
-								text: "Thanks for recycling properly, we're working on getting you the recycling information required to recycle the items in your picture!"
-							}
-							
-						}, (r,e)=>{
-							
-							if(e) console.error(e)
-
-						})
 						await asyncForEach(message.attachments, async attachment=>{
 							
 							if(attachment.type == 'image'){
@@ -97,7 +85,7 @@ app.post('/webhook', async (req, res) => {
 
 							}
 						})
-
+						
 						// Forward request to wasteAPI
 						try {
 
@@ -109,20 +97,48 @@ app.post('/webhook', async (req, res) => {
 
 							console.log("resp.data", resp.data)
 
+							bot.api('me/messages', 'post', {
+								recipient: webhook_event.sender,
+								message: {
+									text: resp.data.info
+								}
+							}, (r,e)=>{
+								if(e) console.error(e)
+							})
+							
+
+						} catch(err){
+							console.error(err)
+						}
+
+						
+
+					} else {
+
+						// Forward request to wasteAPI
+						try {
+
+							let apiURL = "http://127.0.0.1:9898/info"
+
+							let resp = await axios.post(apiURL, {
+								message: message.text
+							})
+
+							console.log("resp.data", resp.data)
+
+							bot.api('me/messages', 'post', {
+								recipient: webhook_event.sender,
+								message: {
+									text: resp.data.info
+								}
+							}, (r,e)=>{
+								if(e) console.error(e)
+							})
+
 						} catch(err){
 							console.error(err)
 						}
 						
-
-					} else {
-						bot.api('me/messages', 'post', {
-							recipient: webhook_event.sender,
-							message: {
-								text: "Hi "+message.text+", I'm Dad"
-							}
-						}, (r,e)=>{
-							if(e) console.error(e)
-						})
 					}
 
 				}
