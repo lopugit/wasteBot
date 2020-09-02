@@ -4,7 +4,7 @@
   "description": "A facebook chat bot to be used with the waste management ecosystem",
   "main": "bot/index.js",
   "scripts": {
-		"start": "pm2 start ecosystem.config.js",
+    "start": "pm2 start ecosystem.config.js",
     "test": "tests/test.js",
     "ngrokosx": "./ngroks/ngrokOsx http 8899 -log=stdout > ./ngroks/logs/osx.log &"
   },

@@ -111,8 +111,6 @@ app.post('/webhook', async (req, res) => {
 							console.error(err)
 						}
 
-						
-
 					} else {
 
 						// Forward request to wasteAPI
