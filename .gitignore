@@ -104,7 +104,7 @@ dist
 .tern-port
 
 
-bot/node_modules/secret.js
+bot/node_modules/secrets.js
 
 imageDB/*
 
