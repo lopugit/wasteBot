@@ -108,4 +108,6 @@ bot/node_modules/secrets.js
 
 imageDB/*
 
+!imageDB
+
 package-lock.json
