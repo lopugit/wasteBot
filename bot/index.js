@@ -67,7 +67,7 @@ app.post('/webhook', async (req, res) => {
 							if(attachment.type == 'image'){
 								
 								let url = attachment.payload.url
-								let dir = __dirname+config.imageDBpath+webhook_event.sender.id+"/"
+								let dir = __dirname+"/../"+config.imageDBpath+webhook_event.sender.id+"/"
 
 								// create directory for sender
 								if (!fs.existsSync(dir)){
