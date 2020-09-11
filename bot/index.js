@@ -33,7 +33,7 @@ let app = express()
 app.use(bodyParser.urlencoded({ limit: '100mb', extended: false }));
 app.use(bodyParser.json({ limit: '100mb' }));
 
-app.listen(8899, () => console.log('Facebook Waste Management chatbot listening on 8899!'));
+app.listen(config.port, () => console.log('Facebook Waste Management chatbot listening on 8899!'));
 
 app.get('/', (req, res) => res.send('Hello Bot World!'));
 
@@ -67,7 +67,7 @@ app.post('/webhook', async (req, res) => {
 							if(attachment.type == 'image'){
 								
 								let url = attachment.payload.url
-								let dir = __dirname+"/../imageDB/"+webhook_event.sender.id+"/"
+								let dir = __dirname+config.imageDBpath+webhook_event.sender.id+"/"
 
 								// create directory for sender
 								if (!fs.existsSync(dir)){
