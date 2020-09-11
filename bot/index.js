@@ -95,8 +95,6 @@ app.post('/webhook', async (req, res) => {
 								attachments: message.attachments
 							})
 
-							console.log("resp.data", resp.data)
-
 							bot.api('me/messages', 'post', {
 								recipient: webhook_event.sender,
 								message: {
@@ -121,8 +119,6 @@ app.post('/webhook', async (req, res) => {
 							let resp = await axios.post(apiURL, {
 								message: message.text
 							})
-
-							console.log("resp.data", resp.data)
 
 							bot.api('me/messages', 'post', {
 								recipient: webhook_event.sender,
