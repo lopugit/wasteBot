@@ -108,6 +108,6 @@ bot/node_modules/secrets.js
 
 imageDB/*
 
-!somefolder/.gitkeep 
+!imageDB/.gitkeep 
 
 package-lock.json
