@@ -99,6 +99,21 @@ app.post('/webhook', async (req, res) => {
 								recipient: webhook_event.sender,
 								message: {
 									text: resp.data.info
+									quick_replies:[
+									  {
+										"content_type":"text",
+										"title":"option 1",
+										"payload":"<POSTBACK_PAYLOAD>",
+									  ,{
+										"content_type":"text",
+										"title":"option 2",
+										"payload":"<POSTBACK_PAYLOAD>",
+									  },{
+										"content_type":"text",
+										"title":"option 3",
+										"payload":"<POSTBACK_PAYLOAD>",
+									  }
+									]
 								}
 							}, (r,e)=>{
 								if(e) console.error(e)
