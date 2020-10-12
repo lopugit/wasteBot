@@ -60,23 +60,88 @@ app.post('/webhook', async (req, res) => {
 			// Iterates over each entry - there may be multiple if batched
 			body.entry.forEach(async function(entry) {
 
+				let reply = {
+					text: "Sorry but we couldn't find any recycling information at this time or something else went wrong, please try again later",
+				}
+
 				// Gets the message. entry.messaging is an array, but 
 				// will only ever contain one message, so we get index 0
 				let webhook_event = entry.messaging[0];
 
 				console.log("incoming webhook_event: ", webhook_event)
 
+				// check type of message
+				if(webhook_event.message.quick_reply){
 
-				// new message
-				if(webhook_event.message){
-					let message = webhook_event.message
-					
-					let resp = {
-						data: {
-							info: "Sorry but we couldn't find any recycling information at this time, please try again later"
+
+					if(webhook_event.message.quick_reply.payload == 'None'){
+
+						reply.text = "Unfortunately we couldn't find any recycling information with the description or images you provided, please try again with a different picture or a more descriptive description, sorry and thank you for using Wastee!"
+
+					} else {
+						// get the previous message query from mongodb
+						let db = client.db("wastee");
+						let conversations = db.collection("conversations");
+
+						let result = await conversations.findOne({ 
+							id: smarts.getsmart(webhook_event, "message.quick_reply.payload", "1234")
+						})
+						
+						
+						if(typeof smarts.getsmart(result, "data", undefined) == 'string'){
+							result.data = smarts.parse(result.data)
+
+							if(result.stage == "category"){
+								
+								reply.quick_replies = []
+								
+								result.data.forEach(item=>{
+
+									let id = uuid();
+
+									let response = {
+										content_type: "text",
+										title: item.name,
+										payload: id
+									}
+
+									reply.text = "If your item matches one of the following things please select it"
+									reply.quick_replies.push(response)
+									
+									conversations.updateOne({
+										id,
+									},{
+										$set: {
+											id,
+											data: smarts.stringify(item),
+											stage: "final"
+										}
+									},{
+										upsert: true
+									})
+									
+								})
+
+								reply.quick_replies.push({
+									content_type: "text",
+									title: "None of these",
+									payload: "None"
+								})
+
+							} else {
+
+								reply.text = `Is it recyclable? ${result.data.recyclable == 'Yes' ? 'Yes!' : 'Unfortunately not. :('}`
+								if(result.data.advice) reply.text += `\n\n${result.data.advice}`
+				
+							}
+							
 						}
+
 					}
 
+				} else if(webhook_event.message){
+					let message = webhook_event.message
+					
 					if(message.attachments){
 						
 						await asyncForEach(message.attachments, async attachment=>{
@@ -112,6 +177,8 @@ app.post('/webhook', async (req, res) => {
 								attachments: message.attachments
 							})							
 
+							reply.text = resp.data.info
+
 						} catch(err){
 							console.error(err)
 						}
@@ -127,6 +194,7 @@ app.post('/webhook', async (req, res) => {
 								message: message.text
 							})
 
+							reply.text = resp.data.info
 
 						} catch(err){
 							console.error(err)
@@ -136,6 +204,7 @@ app.post('/webhook', async (req, res) => {
 
 					let rangled = {}
 					resp.data.query_output.forEach(output=>{
+						
 						let rangledCat = smarts.gosmart(rangled, output.category, [])
 						rangledCat.push(output)
 
@@ -144,7 +213,8 @@ app.post('/webhook', async (req, res) => {
 					let db = client.db("wastee");
 					let conversations = db.collection("conversations");
 
-					let quick_replies = []
+					reply.quick_replies = []
+
 					Object.keys(rangled).forEach(key=>{
 						let id = uuid();
 
@@ -155,31 +225,39 @@ app.post('/webhook', async (req, res) => {
 							// payload: smarts.stringify(resp.data)
 						}
 
-						quick_replies.push(response)
+						reply.quick_replies.push(response)
 
 						conversations.updateOne({
 							id,
 						},{
 							$set: {
 								id,
-								data: smarts.stringify(rangled[key])
+								data: smarts.stringify(rangled[key]),
+								stage: 'category'
 							}
 						},{
 							upsert: true
 						})
+
 						
 					})
-					bot.api('me/messages', 'post', {
-						recipient: webhook_event.sender,
-						message: {
-							text: "Please select the closest category",
-							quick_replies
-						}
-					}, (r,e)=>{
-						if(e) console.error(e)
+
+					reply.quick_replies.push({
+						content_type: "text",
+						title: "None of these",
+						payload: "None"
 					})
+					
+					reply.text = "We matched the following categories to your query, please select the closest one"
 
 				}
+								
+				bot.api('me/messages', 'post', {
+					recipient: webhook_event.sender,
+					message: reply
+				}, (r,e)=>{
+					if(e) console.error(e)
+				})
 								
 			});
 
