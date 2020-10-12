@@ -1,10 +1,11 @@
 {
-  "name": "wastebot",
+  "name": "wasteBot",
   "version": "0.0.1",
   "description": "A facebook chat bot to be used with the waste management ecosystem",
   "main": "bot/index.js",
   "scripts": {
     "start": "pm2 start ecosystem.config.js",
+    "log": "pm2 log wasteBot",
     "test": "tests/test.js",
     "ngrokosx": "./ngroks/ngrokOsx http 8899 -log=stdout > ./ngroks/logs/osx.log &"
   },
@@ -25,8 +26,10 @@
     "express": "^4.17.1",
     "fb": "^2.0.0",
     "file-type": "^14.7.1",
+    "mongodb": "3.6.2",
     "request": "^2.88.2",
     "request-promise": "^4.2.6",
+    "smarts": "1.0.227",
     "uuid": "^8.3.0"
   }
 }

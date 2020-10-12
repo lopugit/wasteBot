@@ -19,8 +19,6 @@ let bot = FB.extend(extention)
 // set the access token
 bot.setAccessToken(config.devBot.token)
 
-
-
 let express = require('express')
 let request = require('request-promise')
 let axios = require('axios')
@@ -29,6 +27,19 @@ let FileType = require('file-type')
 let uuid = require('uuid').v4
 let bodyParser = require('body-parser')
 let app = express()
+let smarts = require('smarts')()
+
+// create mongoDB connection for querying
+let MongoClient = require('mongodb').MongoClient;
+
+let uri = config.uri
+
+let client = new MongoClient(uri, {
+	useNewUrlParser: true,
+	useUnifiedTopology: true
+});
+
+client.connect()
 
 app.use(bodyParser.urlencoded({ limit: '100mb', extended: false }));
 app.use(bodyParser.json({ limit: '100mb' }));
@@ -123,10 +134,46 @@ app.post('/webhook', async (req, res) => {
 						
 					}
 
+					let rangled = {}
+					resp.data.query_output.forEach(output=>{
+						let rangledCat = smarts.gosmart(rangled, output.category, [])
+						rangledCat.push(output)
+
+					})
+
+					let db = client.db("wastee");
+					let conversations = db.collection("conversations");
+
+					let quick_replies = []
+					Object.keys(rangled).forEach(key=>{
+						let id = uuid();
+
+						let response = {
+							content_type: "text",
+							title: key,
+							payload: id
+							// payload: smarts.stringify(resp.data)
+						}
+
+						quick_replies.push(response)
+
+						conversations.updateOne({
+							id,
+						},{
+							$set: {
+								id,
+								data: smarts.stringify(rangled[key])
+							}
+						},{
+							upsert: true
+						})
+						
+					})
 					bot.api('me/messages', 'post', {
 						recipient: webhook_event.sender,
 						message: {
-							text: resp.data.info
+							text: "Please select the closest category",
+							quick_replies
 						}
 					}, (r,e)=>{
 						if(e) console.error(e)
