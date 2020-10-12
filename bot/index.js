@@ -17,7 +17,7 @@ let extention = config = require('config')
 let bot = FB.extend(extention)
 
 // set the access token
-bot.setAccessToken(config.wastee.token)
+bot.setAccessToken(config.devBot.token)
 
 
 
@@ -53,12 +53,18 @@ app.post('/webhook', async (req, res) => {
 				// will only ever contain one message, so we get index 0
 				let webhook_event = entry.messaging[0];
 
-				console.log("unhandled webhook_event: ", webhook_event)
+				console.log("incoming webhook_event: ", webhook_event)
 
 
 				// new message
 				if(webhook_event.message){
 					let message = webhook_event.message
+					
+					let resp = {
+						data: {
+							info: "Sorry but we couldn't find any recycling information at this time, please try again later"
+						}
+					}
 
 					if(message.attachments){
 						
@@ -91,34 +97,9 @@ app.post('/webhook', async (req, res) => {
 
 							let apiURL = "http://127.0.0.1:9898/info"
 
-							let resp = await axios.post(apiURL, {
+							resp = await axios.post(apiURL, {
 								attachments: message.attachments
-							})
-
-							bot.api('me/messages', 'post', {
-								recipient: webhook_event.sender,
-								message: {
-									text: resp.data.info
-									quick_replies:[
-									  {
-										"content_type":"text",
-										"title":"option 1",
-										"payload":"<POSTBACK_PAYLOAD>",
-									  ,{
-										"content_type":"text",
-										"title":"option 2",
-										"payload":"<POSTBACK_PAYLOAD>",
-									  },{
-										"content_type":"text",
-										"title":"option 3",
-										"payload":"<POSTBACK_PAYLOAD>",
-									  }
-									]
-								}
-							}, (r,e)=>{
-								if(e) console.error(e)
-							})
-							
+							})							
 
 						} catch(err){
 							console.error(err)
@@ -131,24 +112,25 @@ app.post('/webhook', async (req, res) => {
 
 							let apiURL = "http://127.0.0.1:9898/info"
 
-							let resp = await axios.post(apiURL, {
+							resp = await axios.post(apiURL, {
 								message: message.text
 							})
 
-							bot.api('me/messages', 'post', {
-								recipient: webhook_event.sender,
-								message: {
-									text: resp.data.info
-								}
-							}, (r,e)=>{
-								if(e) console.error(e)
-							})
 
 						} catch(err){
 							console.error(err)
 						}
 						
 					}
+
+					bot.api('me/messages', 'post', {
+						recipient: webhook_event.sender,
+						message: {
+							text: resp.data.info
+						}
+					}, (r,e)=>{
+						if(e) console.error(e)
+					})
 
 				}
 								
