@@ -17,7 +17,7 @@ let extention = config = require('config')
 let bot = FB.extend(extention)
 
 // set the access token
-bot.setAccessToken(config.devBot.token)
+bot.setAccessToken(config.wastee.token)
 
 let express = require('express')
 let request = require('request-promise')
