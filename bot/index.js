@@ -69,7 +69,7 @@ app.post('/webhook', async (req, res) => {
 				let webhook_event = entry.messaging[0];
 
 				console.log("incoming webhook_event: ", webhook_event)
-				
+
 				if( !webhook_event.message.text || ( webhook_event.message.text && !["How does Wastee work?", "Who made Wastee?", "Where is the recycling information from?"].includes(webhook_event.message.text) ) ){
 					// check type of message
 					if(webhook_event.message.quick_reply){
@@ -131,8 +131,18 @@ app.post('/webhook', async (req, res) => {
 
 								} else {
 
-									reply.text = `Is it recyclable? ${result.data.recyclable == 'Yes' ? 'Yes!' : 'Unfortunately not. :('}`
+									reply.text = ""
+									
+									// if(result.data.category) reply.text = `\n\nThese are in the category ${result.data.category}, `
+
+									if(result.data.recyclable == 'Yes'){
+										reply.text += `Yes! These are recylable`
+									} else {
+										reply.text += `Unfortunately these aren't recyclable. :(`
+									}
+
 									if(result.data.advice) reply.text += `\n\n${result.data.advice}`
+
 					
 								}
 								
@@ -203,25 +213,18 @@ app.post('/webhook', async (req, res) => {
 							
 						}
 
-						let rangled = {}
-						resp.data.query_output.forEach(output=>{
-							
-							let rangledCat = smarts.gosmart(rangled, output.category, [])
-							rangledCat.push(output)
-
-						})
-
 						let db = client.db("wastee");
 						let conversations = db.collection("conversations");
-
 						reply.quick_replies = []
 
-						Object.keys(rangled).forEach(key=>{
+						resp.data.query_output.forEach(output=>{
+
+
 							let id = uuid();
 
 							let response = {
 								content_type: "text",
-								title: key,
+								title: output.name,
 								payload: id
 								// payload: smarts.stringify(resp.data)
 							}
@@ -233,8 +236,8 @@ app.post('/webhook', async (req, res) => {
 							},{
 								$set: {
 									id,
-									data: smarts.stringify(rangled[key]),
-									stage: 'category'
+									data: smarts.stringify(output),
+									stage: 'final'
 								}
 							},{
 								upsert: true
@@ -249,7 +252,7 @@ app.post('/webhook', async (req, res) => {
 							payload: "None"
 						})
 						
-						reply.text = "We matched the following categories to your query, please select the closest one"
+						reply.text = "We matched the following things to your query, please select what matches the closest"
 
 					}
 									
