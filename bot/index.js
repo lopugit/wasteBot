@@ -69,7 +69,7 @@ app.post('/webhook', async (req, res) => {
 				let webhook_event = entry.messaging[0];
 
 				console.log("incoming webhook_event: ", webhook_event)
-				console.log(webhook_event.message.text)
+				
 				if( !webhook_event.message.text || ( webhook_event.message.text && !["How does Wastee work?", "Who made Wastee?", "Where is the recycling information from?"].includes(webhook_event.message.text) ) ){
 					// check type of message
 					if(webhook_event.message.quick_reply){
