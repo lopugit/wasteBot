@@ -69,195 +69,198 @@ app.post('/webhook', async (req, res) => {
 				let webhook_event = entry.messaging[0];
 
 				console.log("incoming webhook_event: ", webhook_event)
+				if(!["How does Wastee work?", "Whoe made Wastee?", "Where is the recycling information from?"].includes(message.text)){
+					// check type of message
+					if(webhook_event.message.quick_reply){
 
-				// check type of message
-				if(webhook_event.message.quick_reply){
 
+						if(webhook_event.message.quick_reply.payload == 'None'){
 
-					if(webhook_event.message.quick_reply.payload == 'None'){
+							reply.text = "Unfortunately we couldn't find any recycling information with the description or images you provided, please try again with a different picture or a more descriptive description, sorry and thank you for using Wastee!"
 
-						reply.text = "Unfortunately we couldn't find any recycling information with the description or images you provided, please try again with a different picture or a more descriptive description, sorry and thank you for using Wastee!"
+						} else {
+							// get the previous message query from mongodb
+							let db = client.db("wastee");
+							let conversations = db.collection("conversations");
 
-					} else {
-						// get the previous message query from mongodb
+							let result = await conversations.findOne({ 
+								id: smarts.getsmart(webhook_event, "message.quick_reply.payload", "1234")
+							})
+							
+							
+							if(typeof smarts.getsmart(result, "data", undefined) == 'string'){
+								result.data = smarts.parse(result.data)
+
+								if(result.stage == "category"){
+									
+									reply.quick_replies = []
+									
+									result.data.forEach(item=>{
+
+										let id = uuid();
+
+										let response = {
+											content_type: "text",
+											title: item.name,
+											payload: id
+										}
+
+										reply.text = "If your item matches one of the following things please select it"
+										reply.quick_replies.push(response)
+										
+										conversations.updateOne({
+											id,
+										},{
+											$set: {
+												id,
+												data: smarts.stringify(item),
+												stage: "final"
+											}
+										},{
+											upsert: true
+										})
+										
+									})
+
+									reply.quick_replies.push({
+										content_type: "text",
+										title: "None of these",
+										payload: "None"
+									})
+
+								} else {
+
+									reply.text = `Is it recyclable? ${result.data.recyclable == 'Yes' ? 'Yes!' : 'Unfortunately not. :('}`
+									if(result.data.advice) reply.text += `\n\n${result.data.advice}`
+					
+								}
+								
+							}
+
+						}
+
+					} else if(webhook_event.message){
+						let message = webhook_event.message
+						
+						if(message.attachments){
+							
+							await asyncForEach(message.attachments, async attachment=>{
+								
+								if(attachment.type == 'image'){
+									
+									let url = attachment.payload.url
+									let dir = __dirname+"/../"+config.imageDBpath+webhook_event.sender.id+"/"
+
+									// create directory for sender
+									if (!fs.existsSync(dir)){
+										fs.mkdirSync(dir)
+									}
+
+									// add filename uuid to attachment object
+									attachment.uuid = uuid()
+
+									// create path out of local directory + sender facebook ID
+									path = dir+attachment.uuid
+									
+									// download image to sender ID'd local folder DB
+									attachment.imageData = await download(url, path)
+
+								}
+							})
+							
+							// Forward request to wasteAPI
+							try {
+
+								let apiURL = "http://127.0.0.1:9898/info"
+
+								resp = await axios.post(apiURL, {
+									attachments: message.attachments
+								})							
+
+								reply.text = resp.data.info
+
+							} catch(err){
+								console.error(err)
+							}
+
+						} else {
+
+							// Forward request to wasteAPI
+							try {
+
+								let apiURL = "http://127.0.0.1:9898/info"
+
+								resp = await axios.post(apiURL, {
+									message: message.text
+								})
+
+								reply.text = resp.data.info
+
+							} catch(err){
+								console.error(err)
+							}
+							
+						}
+
+						let rangled = {}
+						resp.data.query_output.forEach(output=>{
+							
+							let rangledCat = smarts.gosmart(rangled, output.category, [])
+							rangledCat.push(output)
+
+						})
+
 						let db = client.db("wastee");
 						let conversations = db.collection("conversations");
 
-						let result = await conversations.findOne({ 
-							id: smarts.getsmart(webhook_event, "message.quick_reply.payload", "1234")
-						})
-						
-						
-						if(typeof smarts.getsmart(result, "data", undefined) == 'string'){
-							result.data = smarts.parse(result.data)
+						reply.quick_replies = []
 
-							if(result.stage == "category"){
-								
-								reply.quick_replies = []
-								
-								result.data.forEach(item=>{
+						Object.keys(rangled).forEach(key=>{
+							let id = uuid();
 
-									let id = uuid();
-
-									let response = {
-										content_type: "text",
-										title: item.name,
-										payload: id
-									}
-
-									reply.text = "If your item matches one of the following things please select it"
-									reply.quick_replies.push(response)
-									
-									conversations.updateOne({
-										id,
-									},{
-										$set: {
-											id,
-											data: smarts.stringify(item),
-											stage: "final"
-										}
-									},{
-										upsert: true
-									})
-									
-								})
-
-								reply.quick_replies.push({
-									content_type: "text",
-									title: "None of these",
-									payload: "None"
-								})
-
-							} else {
-
-								reply.text = `Is it recyclable? ${result.data.recyclable == 'Yes' ? 'Yes!' : 'Unfortunately not. :('}`
-								if(result.data.advice) reply.text += `\n\n${result.data.advice}`
-				
+							let response = {
+								content_type: "text",
+								title: key,
+								payload: id
+								// payload: smarts.stringify(resp.data)
 							}
-							
-						}
 
-					}
+							reply.quick_replies.push(response)
 
-				} else if(webhook_event.message){
-					let message = webhook_event.message
-					
-					if(message.attachments){
-						
-						await asyncForEach(message.attachments, async attachment=>{
-							
-							if(attachment.type == 'image'){
-								
-								let url = attachment.payload.url
-								let dir = __dirname+"/../"+config.imageDBpath+webhook_event.sender.id+"/"
-
-								// create directory for sender
-								if (!fs.existsSync(dir)){
-									fs.mkdirSync(dir)
+							conversations.updateOne({
+								id,
+							},{
+								$set: {
+									id,
+									data: smarts.stringify(rangled[key]),
+									stage: 'category'
 								}
-
-								// add filename uuid to attachment object
-								attachment.uuid = uuid()
-
-								// create path out of local directory + sender facebook ID
-								path = dir+attachment.uuid
-								
-								// download image to sender ID'd local folder DB
-								attachment.imageData = await download(url, path)
-
-							}
-						})
-						
-						// Forward request to wasteAPI
-						try {
-
-							let apiURL = "http://127.0.0.1:9898/info"
-
-							resp = await axios.post(apiURL, {
-								attachments: message.attachments
-							})							
-
-							reply.text = resp.data.info
-
-						} catch(err){
-							console.error(err)
-						}
-
-					} else {
-
-						// Forward request to wasteAPI
-						try {
-
-							let apiURL = "http://127.0.0.1:9898/info"
-
-							resp = await axios.post(apiURL, {
-								message: message.text
+							},{
+								upsert: true
 							})
 
-							reply.text = resp.data.info
-
-						} catch(err){
-							console.error(err)
-						}
-						
-					}
-
-					let rangled = {}
-					resp.data.query_output.forEach(output=>{
-						
-						let rangledCat = smarts.gosmart(rangled, output.category, [])
-						rangledCat.push(output)
-
-					})
-
-					let db = client.db("wastee");
-					let conversations = db.collection("conversations");
-
-					reply.quick_replies = []
-
-					Object.keys(rangled).forEach(key=>{
-						let id = uuid();
-
-						let response = {
-							content_type: "text",
-							title: key,
-							payload: id
-							// payload: smarts.stringify(resp.data)
-						}
-
-						reply.quick_replies.push(response)
-
-						conversations.updateOne({
-							id,
-						},{
-							$set: {
-								id,
-								data: smarts.stringify(rangled[key]),
-								stage: 'category'
-							}
-						},{
-							upsert: true
+							
 						})
 
+						reply.quick_replies.push({
+							content_type: "text",
+							title: "None of these",
+							payload: "None"
+						})
 						
-					})
+						reply.text = "We matched the following categories to your query, please select the closest one"
 
-					reply.quick_replies.push({
-						content_type: "text",
-						title: "None of these",
-						payload: "None"
+					}
+									
+					bot.api('me/messages', 'post', {
+						recipient: webhook_event.sender,
+						message: reply
+					}, (r,e)=>{
+						if(e) console.error(e)
 					})
-					
-					reply.text = "We matched the following categories to your query, please select the closest one"
 
 				}
-								
-				bot.api('me/messages', 'post', {
-					recipient: webhook_event.sender,
-					message: reply
-				}, (r,e)=>{
-					if(e) console.error(e)
-				})
+
 								
 			});
 
