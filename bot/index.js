@@ -1,3 +1,4 @@
+
 /**
  * @Description This is the entry point file for the Wastee Facebook Chatbot
  * This bot waits for messages sent by Facebook's Webhooks System and replies
@@ -87,24 +88,24 @@ app.post('/webhook', async (req, res) => {
 
 				// Gets the message. entry.messaging is an array, but 
 				// will only ever contain one message, so we get index 0
-				let webhook_event = entry.messaging[0];
+				let webhookEvent = entry.messaging[0];
 
 				// log the message from facebook
-				console.log("incoming webhook_event: ", webhook_event)
+				console.log("incoming webhookEvent: ", webhookEvent)
 
 				// if the message has no text or the text does not contain
 				// one of the predefined auto-response messages handled by Facebook itself
 				// then run our chatbot response system
-				if( !webhook_event.message.text || ( webhook_event.message.text && !["How does Wastee work?", "Who made Wastee?", "Where is the recycling information from?"].includes(webhook_event.message.text) ) ){
+				if( !webhookEvent.message.text || ( webhookEvent.message.text && !["How does Wastee work?", "Who made Wastee?", "Where is the recycling information from?"].includes(webhookEvent.message.text) ) ){
 
 					// check type of message
 					// if it is a quick_reply, this means a user has initiated a dialogue with our chat bot 
 					// already and is in stage 2 of the communications
-					if(webhook_event.message.quick_reply){
+					if(webhookEvent.message.quick_reply){
 						
 						// if the quick reply payload is 'None' it means the user chose the none of the above option
 						// and Wastee did not generate any accurate information for them regarding their query
-						if(webhook_event.message.quick_reply.payload == 'None'){
+						if(webhookEvent.message.quick_reply.payload == 'None'){
 
 							reply.text = "Unfortunately we couldn't find any recycling information with the description or images you provided, please try again with a different picture or a more descriptive description, sorry and thank you for using Wastee!"
 
@@ -118,7 +119,7 @@ app.post('/webhook', async (req, res) => {
 							let conversations = db.collection("conversations");
 
 							let result = await conversations.findOne({ 
-								id: smarts.getsmart(webhook_event, "message.quick_reply.payload", "1234")
+								id: smarts.getsmart(webhookEvent, "message.quick_reply.payload", "1234")
 							})
 
 							// check that the data is there
@@ -146,10 +147,10 @@ app.post('/webhook', async (req, res) => {
 					} 
 
 					// otherwise the the Facebook message is not a quick_reply
-					else if(webhook_event.message){
+					else if(webhookEvent.message){
 
-						// store webhook_event.message in the message variable
-						let message = webhook_event.message
+						// store webhookEvent.message in the message variable
+						let message = webhookEvent.message
 						
 						// if the message has attachments, forward these to the WasteAPI
 						if(message.attachments){
@@ -159,7 +160,7 @@ app.post('/webhook', async (req, res) => {
 								if(attachment.type == 'image'){
 									
 									let url = attachment.payload.url
-									let dir = __dirname+"/../"+config.imageDBpath+webhook_event.sender.id+"/"
+									let dir = __dirname+"/../"+config.imageDBpath+webhookEvent.sender.id+"/"
 
 									// create directory for sender
 									if (!fs.existsSync(dir)){
@@ -192,7 +193,9 @@ app.post('/webhook', async (req, res) => {
 								console.error(err)
 							}
 
-						} else {
+						} 
+						// Otherwise if the message only contains text, forward text to wasteAPI
+						else if(message.text) {
 
 							// Forward text request to wasteAPI
 							try {
@@ -218,7 +221,7 @@ app.post('/webhook', async (req, res) => {
 						// initliase quick_replies array
 						reply.quick_replies = []
 
-						resp.data.query_output.forEach(output=>{
+						resp.data.queryOutput.forEach(output=>{
 
 							let id = uuid();
 
@@ -266,7 +269,7 @@ app.post('/webhook', async (req, res) => {
 					// 1 singular api call is used for both quick_replies response and 
 					// final recycling information response as the only different is the message.quick_replies property				
 					bot.api('me/messages', 'post', {
-						recipient: webhook_event.sender,
+						recipient: webhookEvent.sender,
 						message: reply
 					}, (r,e)=>{
 						if(e) console.error(e)
