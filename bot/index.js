@@ -155,8 +155,93 @@ app.post('/webhook', async (req, res) => {
 						// if the message has attachments, forward these to the WasteAPI
 						if(message.attachments){
 							
-							await asyncForEach(message.attachments, async attachment=>{
+							// rate limit images
+							let db = client.db("wastee");
+							let imageRequests = db.collection("imageRequests");
+							let senderId = smarts.getsmart(webhookEvent, "sender.id", 1234)
+
+							let result = await imageRequests.findOne({ 
+								id: senderId
+							})
+
+							if(result && webhookEvent.sender.id != '3710665022299286'){
+
+								let currentStart = new Date( result.currentStart.getTime() )
+								let currentTime = new Date()
+
+								let difference = Math.round(((currentTime - currentStart)/1000)/60)
+
+								if(difference < 60 && result.count > 10){
+
+									// send the response to facebook
+									// 1 singular api call is used for both quick_replies response and 
+									// final recycling information response as the only different is the message.quick_replies property				
+									bot.api('me/messages', 'post', {
+										recipient: webhookEvent.sender,
+										message: {
+											text: "Sorry but we only allow up to 10 images per hour to give other people a chance to use the service! Please try again in "+(60-difference)+" minutes!"
+										}
+									}, (r)=>{
+										if(r.error) console.error(r.error)
+									})
+
+									return
+
+								} else if(difference < 60) {
+
+									// insert the current conversation possible response and recycling
+									// data assosciated with that response choice into our database
+									imageRequests.updateOne({
+										id: senderId,
+									},{
+										$set: {
+											id: senderId,
+											count: ++result.count
+										}
+									},{
+										upsert: true
+									})
+
+								} else {
+
+									// insert the current conversation possible response and recycling
+									// data assosciated with that response choice into our database
+									imageRequests.updateOne({
+										id: senderId,
+									},{
+										$set: {
+											id: senderId,
+											count: 1,
+											currentStart: new Date()
+										}
+									},{
+										upsert: true
+									})
+									
+								}
+
+							} else {
+
+								// insert the current conversation possible response and recycling
+								// data assosciated with that response choice into our database
+								imageRequests.updateOne({
+									id: senderId,
+								},{
+									$set: {
+										id: senderId,
+										count: 1,
+										currentStart: new Date()
+									}
+								},{
+									upsert: true
+								})
 								
+							}
+
+							if(message.attachments[0]){
+
+								let attachment = message.attachments[0]
+
 								if(attachment.type == 'image'){
 									
 									let url = attachment.payload.url
@@ -177,8 +262,9 @@ app.post('/webhook', async (req, res) => {
 									attachment.imageData = await download(url, path)
 
 								}
-							})
-							
+
+							}
+
 							// Forward images request to wasteAPI
 							try {
 
@@ -186,7 +272,7 @@ app.post('/webhook', async (req, res) => {
 
 								// Forward images request to wasteAPI
 								resp = await axios.post(apiURL, {
-									attachments: message.attachments
+									attachments: [message.attachments[0]]
 								})							
 
 							} catch(err){
@@ -215,8 +301,8 @@ app.post('/webhook', async (req, res) => {
 
 						// create connection to database to temporarily store
 						// recycling information based on this users query
-						let db = client.db("wastee");
-						let conversations = db.collection("conversations");
+						let db = client.db("wastee")
+						let conversations = db.collection("conversations")
 
 						// initliase quick_replies array
 						reply.quick_replies = []
@@ -264,15 +350,14 @@ app.post('/webhook', async (req, res) => {
 
 					}
 
-
 					// send the response to facebook
 					// 1 singular api call is used for both quick_replies response and 
 					// final recycling information response as the only different is the message.quick_replies property				
 					bot.api('me/messages', 'post', {
 						recipient: webhookEvent.sender,
 						message: reply
-					}, (r,e)=>{
-						if(e) console.error(e)
+					}, (r)=>{
+						if(r.error) console.error(r.error)
 					})
 
 				}
